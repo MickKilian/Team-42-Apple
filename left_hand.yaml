@@ -1,0 +1,61 @@
+
+import:
+
+  # Input graphs
+   - graphs/random.yaml # random data
+  # - graphs/replay.yaml # pre-recorded data
+  # - graphs/bitalino.yaml # BITalino device
+
+  # Biomarkers and UI
+  # -----------------
+   - graphs/detect_burst.yaml
+   - graphs/ui.yaml
+  # - graphs/save.yaml # save the data in HDF5
+
+graphs:
+
+  - id: broker
+    nodes:
+      - id: broker
+        module: timeflux.nodes.zmq
+        class: Broker
+        params:
+          topic: burst
+
+
+  - id: Main_graph
+    nodes:
+      # Subscribe to signals
+      # --------------------
+      - id: sub
+        module: timeflux.nodes.zmq
+        class: Sub
+        params:
+          topics: [raw, events]
+      - id: tkeo
+        module: nodes.emg
+        class:  TKEO
+      - id: smooth
+        module: nodes.filters
+        class:  MovingAverage
+        params:
+          length: .5
+          step: 0.
+      - id: scale
+        module: nodes.filters
+        class: RecursiveScaler
+        params:
+          method: minmax
+          limits: [.1, 2]
+      - id: display
+        module: timeflux.nodes.debug
+        class: Display
+    edges:
+      - source: sub
+        target: tkeo
+      - source: tkeo
+        target: smooth
+      - source: smooth
+        target: scale
+      - source: scale
+        target: display
